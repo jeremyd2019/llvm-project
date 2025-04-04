@@ -210,7 +210,7 @@ if( LLVM_REVERSE_ITERATION )
   set( LLVM_ENABLE_REVERSE_ITERATION 1 )
 endif()
 
-if(WIN32)
+if(WIN32 OR CYGWIN)
   set(LLVM_HAVE_LINK_VERSION_SCRIPT 0)
   if(CYGWIN)
     set(LLVM_ON_WIN32 0)
@@ -455,7 +455,7 @@ if( LLVM_ENABLE_PIC )
 endif()
 
 if((NOT (${CMAKE_SYSTEM_NAME} MATCHES "AIX")) AND
-   (NOT (WIN32 OR CYGWIN) OR (MINGW AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")))
+   (NOT (WIN32 OR CYGWIN) OR ((MINGW OR CYGWIN) AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")))
   # GCC for MinGW does nothing about -fvisibility-inlines-hidden, but warns
   # about use of the attributes. As long as we don't use the attributes (to
   # override the default) we shouldn't set the command line options either.
