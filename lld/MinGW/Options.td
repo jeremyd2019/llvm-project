@@ -59,6 +59,7 @@ def Bstatic: F<"Bstatic">, HelpText<"Do not link against shared libraries">;
 defm demangle: B<"demangle",
     "Demangle symbol names (default)",
     "Do not demangle symbol names">;
+def disable_auto_image_base: F<"disable-auto-image-base">;
 def disable_auto_import: F<"disable-auto-import">,
     HelpText<"Don't automatically import data symbols from other DLLs without dllimport">;
 def disable_runtime_pseudo_reloc: F<"disable-runtime-pseudo-reloc">,
@@ -66,6 +67,7 @@ def disable_runtime_pseudo_reloc: F<"disable-runtime-pseudo-reloc">,
 def disable_stdcall_fixup: F<"disable-stdcall-fixup">,
     HelpText<"Don't resolve stdcall/fastcall/vectorcall to undecorated symbols">;
 defm dynamicbase: B_disable<"dynamicbase", "Enable ASLR", "Disable ASLR">;
+def enable_auto_image_base: F<"enable-auto-image-base">;
 def enable_auto_import: F<"enable-auto-import">,
     HelpText<"Automatically import data symbols from other DLLs where needed">;
 def enable_runtime_pseudo_reloc: F<"enable-runtime-pseudo-reloc">,
@@ -236,8 +238,6 @@ def alias_undefined_u: JoinedOrSeparate<["-"], "u">, Alias<undefined>;
 // Ignored options
 def: Joined<["-"], "O">;
 def: F<"as-needed">;
-def: F<"disable-auto-image-base">;
-def: F<"enable-auto-image-base">;
 def: F<"end-group">;
 def: Flag<["--"], "full-shutdown">;
 defm: EqNoHelp<"major-image-version">;

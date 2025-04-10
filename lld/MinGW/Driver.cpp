@@ -179,6 +179,16 @@ static bool isI386Target(const opt::InputArgList &args,
   return defaultTarget.getArch() == Triple::x86;
 }
 
+static bool is64bitTarget(const opt::InputArgList &args,
+                          const Triple &defaultTarget) {
+  auto *a = args.getLastArg(OPT_m);
+  if (a) {
+    StringRef s = a->getValue();
+    return s == "i386pep" || s == "arm64pe" || s == "arm64ecpe";
+  }
+  return defaultTarget.isArch64Bit();
+}
+
 namespace lld {
 namespace coff {
 bool link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
@@ -225,6 +235,7 @@ bool link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
   }
 
   Triple defaultTarget(Triple::normalize(sys::getDefaultTargetTriple()));
+  bool isCygwinTarget = defaultTarget.isWindowsCygwinEnvironment();
 
   std::vector<std::string> linkArgs;
   auto add = [&](const Twine &s) { linkArgs.push_back(s.str()); };
@@ -291,6 +302,26 @@ bool link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
     add("-output-def:" + StringRef(a->getValue()));
   if (auto *a = args.getLastArg(OPT_image_base))
     add("-base:" + StringRef(a->getValue()));
+  else if (isCygwinTarget) {
+    if (args.hasFlag(OPT_enable_auto_image_base, OPT_disable_auto_image_base,
+          false) && args.hasArg(OPT_shared)) {
+      hash_code outhash;
+      uint64_t autobase;
+      if (auto *a = args.getLastArg(OPT_o))
+        outhash = hash_value(StringRef(a->getValue()));
+      else
+        outhash = hash_value(StringRef("a.dll"));
+      if (is64bitTarget(args, defaultTarget))
+        autobase =
+          0x400000000ULL + (((uint64_t)outhash << 16) & 0x1ffff0000ULL);
+      else
+        autobase =
+          (uint32_t)(0x61500000 + (((uint32_t)outhash << 16) & 0x0FFC0000));
+      add("-base:0x" + Twine::utohexstr(autobase));
+    } else if (is64bitTarget(args, defaultTarget)) {
+      add(args.hasArg(OPT_shared) ? "-base:0x400000000" : "-base:0x100400000");
+    }
+  }
   if (auto *a = args.getLastArg(OPT_map))
     add("-lldmap:" + StringRef(a->getValue()));
   if (auto *a = args.getLastArg(OPT_reproduce))
@@ -380,11 +411,14 @@ bool link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
   if (args.getLastArgValue(OPT_m) != "thumb2pe" &&
       args.getLastArgValue(OPT_m) != "arm64pe" &&
       args.getLastArgValue(OPT_m) != "arm64ecpe" &&
-      args.hasFlag(OPT_disable_dynamicbase, OPT_dynamicbase, false))
+      (args.hasFlag(OPT_disable_dynamicbase, OPT_dynamicbase, false) ||
+       (isCygwinTarget && !args.hasArg(OPT_dynamicbase)))
     add("-dynamicbase:no");
-  if (args.hasFlag(OPT_disable_high_entropy_va, OPT_high_entropy_va, false))
+  if (args.hasFlag(OPT_disable_high_entropy_va, OPT_high_entropy_va, false) ||
+      (isCygwinTarget && !args.hasArg(OPT_high_entropy_va)))
     add("-highentropyva:no");
-  if (args.hasFlag(OPT_disable_nxcompat, OPT_nxcompat, false))
+  if (args.hasFlag(OPT_disable_nxcompat, OPT_nxcompat, false) ||
+      (isCygwinTarget && !args.hasArg(OPT_nxcompat)))
     add("-nxcompat:no");
   if (args.hasFlag(OPT_disable_tsaware, OPT_tsaware, false))
     add("-tsaware:no");
@@ -550,6 +584,10 @@ bool link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
     add("-exclude-symbols:" + StringRef(a->getValue()));
 
   std::vector<StringRef> searchPaths;
+  if (isCygwinTarget) {
+    searchPaths.push_back("/usr/lib");
+    searchPaths.push_back("/usr/lib/w32api");
+  }
   for (auto *a : args.filtered(OPT_L)) {
     searchPaths.push_back(a->getValue());
     add("-libpath:" + StringRef(a->getValue()));
