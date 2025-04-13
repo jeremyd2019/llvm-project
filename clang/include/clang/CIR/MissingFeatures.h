@@ -141,6 +141,9 @@ struct MissingFeatures {
   static bool mangledNames() { return false; }
   static bool setDLLStorageClass() { return false; }
   static bool openMP() { return false; }
+  static bool emitCheckedInBoundsGEP() { return false; }
+  static bool preservedAccessIndexRegion() { return false; }
+  static bool bitfields() { return false; }
 
   // Missing types
   static bool dataMemberType() { return false; }

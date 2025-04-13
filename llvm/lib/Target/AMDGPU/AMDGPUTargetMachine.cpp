@@ -616,12 +616,15 @@ createIterativeGCNMaxOccupancyMachineScheduler(MachineSchedContext *C) {
   DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
   if (ST.shouldClusterStores())
     DAG->addMutation(createStoreClusterDAGMutation(DAG->TII, DAG->TRI));
+  DAG->addMutation(createIGroupLPDAGMutation(AMDGPU::SchedulingPhase::Initial));
   return DAG;
 }
 
 static ScheduleDAGInstrs *createMinRegScheduler(MachineSchedContext *C) {
-  return new GCNIterativeScheduler(C,
-    GCNIterativeScheduler::SCHEDULE_MINREGFORCED);
+  auto *DAG = new GCNIterativeScheduler(
+      C, GCNIterativeScheduler::SCHEDULE_MINREGFORCED);
+  DAG->addMutation(createIGroupLPDAGMutation(AMDGPU::SchedulingPhase::Initial));
+  return DAG;
 }
 
 static ScheduleDAGInstrs *
@@ -632,6 +635,7 @@ createIterativeILPMachineScheduler(MachineSchedContext *C) {
   if (ST.shouldClusterStores())
     DAG->addMutation(createStoreClusterDAGMutation(DAG->TII, DAG->TRI));
   DAG->addMutation(createAMDGPUMacroFusionDAGMutation());
+  DAG->addMutation(createIGroupLPDAGMutation(AMDGPU::SchedulingPhase::Initial));
   return DAG;
 }
 
@@ -1087,6 +1091,15 @@ GCNTargetMachine::createMachineScheduler(MachineSchedContext *C) const {
 
   if (SchedStrategy == "max-memory-clause")
     return createGCNMaxMemoryClauseMachineScheduler(C);
+
+  if (SchedStrategy == "iterative-ilp")
+    return createIterativeILPMachineScheduler(C);
+
+  if (SchedStrategy == "iterative-minreg")
+    return createMinRegScheduler(C);
+
+  if (SchedStrategy == "iterative-maxocc")
+    return createIterativeGCNMaxOccupancyMachineScheduler(C);
 
   return createGCNMaxOccupancyMachineScheduler(C);
 }

@@ -243,8 +243,7 @@ class ASTContext : public RefCountedBase<ASTContext> {
   mutable llvm::FoldingSet<PackExpansionType> PackExpansionTypes;
   mutable llvm::FoldingSet<ObjCObjectTypeImpl> ObjCObjectTypes;
   mutable llvm::FoldingSet<ObjCObjectPointerType> ObjCObjectPointerTypes;
-  mutable llvm::FoldingSet<DependentUnaryTransformType>
-    DependentUnaryTransformTypes;
+  mutable llvm::FoldingSet<UnaryTransformType> UnaryTransformTypes;
   // An AutoType can have a dependency on another AutoType via its template
   // arguments. Since both dependent and dependency are on the same set,
   // we can end up in an infinite recursion when looking for a node if we used
@@ -328,6 +327,9 @@ class ASTContext : public RefCountedBase<ASTContext> {
   ///
   /// This is lazily created.  This is intentionally not serialized.
   mutable llvm::StringMap<StringLiteral *> StringLiteralCache;
+
+  mutable llvm::DenseSet<const FunctionDecl *> DestroyingOperatorDeletes;
+  mutable llvm::DenseSet<const FunctionDecl *> TypeAwareOperatorNewAndDeletes;
 
   /// The next string literal "version" to allocate during constant evaluation.
   /// This is used to distinguish between repeated evaluations of the same
@@ -3355,6 +3357,15 @@ public:
 
   void setStaticLocalNumber(const VarDecl *VD, unsigned Number);
   unsigned getStaticLocalNumber(const VarDecl *VD) const;
+
+  bool hasSeenTypeAwareOperatorNewOrDelete() const {
+    return !TypeAwareOperatorNewAndDeletes.empty();
+  }
+  void setIsDestroyingOperatorDelete(const FunctionDecl *FD, bool IsDestroying);
+  bool isDestroyingOperatorDelete(const FunctionDecl *FD) const;
+  void setIsTypeAwareOperatorNewOrDelete(const FunctionDecl *FD,
+                                         bool IsTypeAware);
+  bool isTypeAwareOperatorNewOrDelete(const FunctionDecl *FD) const;
 
   /// Retrieve the context for computing mangling numbers in the given
   /// DeclContext.

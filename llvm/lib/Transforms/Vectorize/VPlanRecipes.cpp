@@ -2642,7 +2642,7 @@ void VPPredInstPHIRecipe::execute(VPTransformState &State) {
     if (vputils::onlyFirstLaneUsed(this) && !State.Lane->isFirstLane())
       return;
 
-    Type *PredInstType = getOperand(0)->getUnderlyingValue()->getType();
+    Type *PredInstType = State.TypeAnalysis.inferScalarType(getOperand(0));
     PHINode *Phi = State.Builder.CreatePHI(PredInstType, 2);
     Phi->addIncoming(PoisonValue::get(ScalarPredInst->getType()),
                      PredicatingBB);
@@ -3379,7 +3379,7 @@ void VPWidenPointerInductionRecipe::execute(VPTransformState &State) {
   assert(getInductionDescriptor().getKind() ==
              InductionDescriptor::IK_PtrInduction &&
          "Not a pointer induction according to InductionDescriptor!");
-  assert(cast<PHINode>(getUnderlyingInstr())->getType()->isPointerTy() &&
+  assert(State.TypeAnalysis.inferScalarType(this)->isPointerTy() &&
          "Unexpected type.");
   assert(!onlyScalarsGenerated(State.VF.isScalable()) &&
          "Recipe should have been replaced");
