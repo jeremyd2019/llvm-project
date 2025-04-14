@@ -239,6 +239,7 @@ private:
   void createRuntimePseudoRelocs();
   void createECChunks();
   void insertCtorDtorSymbols();
+  void insertBssDataStartEndSymbols();
   void markSymbolsWithRelocations(ObjFile *file, SymbolRVASet &usedSymbols);
   void createGuardCFTables();
   void markSymbolsForRVATable(ObjFile *file,
@@ -314,6 +315,7 @@ private:
 
   OutputSection *textSec;
   OutputSection *hexpthkSec;
+  OutputSection *bssSec;
   OutputSection *rdataSec;
   OutputSection *buildidSec;
   OutputSection *dataSec;
@@ -1068,7 +1070,7 @@ void Writer::createSections() {
   textSec = createSection(".text", code | r | x);
   if (isArm64EC(ctx.config.machine))
     hexpthkSec = createSection(".hexpthk", code | r | x);
-  createSection(".bss", bss | r | w);
+  bssSec = createSection(".bss", bss | r | w);
   rdataSec = createSection(".rdata", data | r);
   buildidSec = createSection(".buildid", data | r);
   dataSec = createSection(".data", data | r | w);
@@ -1242,8 +1244,10 @@ void Writer::createMiscChunks() {
   if (config->autoImport)
     createRuntimePseudoRelocs();
 
-  if (config->mingw)
+  if (config->mingw) {
     insertCtorDtorSymbols();
+    insertBssDataStartEndSymbols();
+  }
 }
 
 // Create .idata section for the DLL-imported symbol table.
@@ -2332,6 +2336,34 @@ void Writer::insertCtorDtorSymbols() {
                                   ctorListHead);
   replaceSymbol<DefinedSynthetic>(dtorListSym, dtorListSym->getName(),
                                   dtorListHead);
+}
+
+// MinGW (really, Cygwin) specific.
+// The Cygwin startup code uses __data_start__ __data_end__ __bss_start__
+// and __bss_end__ to know what to copy during fork emulation.
+void Writer::insertBssDataStartEndSymbols() {
+  EmptyChunk *startOfData = make<EmptyChunk>();
+  EmptyChunk *endOfData = make<EmptyChunk>();
+  EmptyChunk *startOfBss = make<EmptyChunk>();
+  EmptyChunk *endOfBss = make<EmptyChunk>();
+  dataSec->insertChunkAtStart(startOfData);
+  dataSec->addChunk(endOfData);
+  bssSec->insertChunkAtStart(startOfBss);
+  bssSec->addChunk(endOfBss);
+
+  Symbol *dataStartSym = ctx.symtab.find("__data_start__");
+  Symbol *dataEndSym = ctx.symtab.find("__data_end__");
+  Symbol *bssStartSym = ctx.symtab.find("__bss_start__");
+  Symbol *bssEndSym = ctx.symtab.find("__bss_end__");
+  replaceSymbol<DefinedSynthetic>(dataStartSym, dataStartSym->getName(),
+                                  startOfData);
+  replaceSymbol<DefinedSynthetic>(dataEndSym, dataEndSym->getName(),
+                                  endOfData);
+  replaceSymbol<DefinedSynthetic>(bssStartSym, bssStartSym->getName(),
+                                  startOfBss);
+  replaceSymbol<DefinedSynthetic>(bssEndSym, bssEndSym->getName(),
+                                  endOfBss);
+
 }
 
 // Handles /section options to allow users to overwrite
