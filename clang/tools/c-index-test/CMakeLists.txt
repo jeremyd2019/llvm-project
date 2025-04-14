@@ -31,6 +31,10 @@ else()
     clangIndex
     clangSerialization
   )
+  if (CYGWIN AND LLVM_LINKER_IS_GNULD)
+    # auto-import screwup?
+    target_link_options(c-index-test PRIVATE LINKER:--allow-multiple-definition)
+  endif()
 endif()
 
 set_target_properties(c-index-test
