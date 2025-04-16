@@ -107,3 +107,20 @@ void Cygwin::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
   addExternCSystemInclude(DriverArgs, CC1Args, SysRoot + "/usr/include");
   addExternCSystemInclude(DriverArgs, CC1Args, SysRoot + "/usr/include/w32api");
 }
+
+void Cygwin::addClangTargetOptions(const ArgList &DriverArgs,
+                                   ArgStringList &CC1Args,
+                                   Action::OffloadKind) const {
+  auto findMacroDefinition = [&](const std::string &Macro) {
+    auto MacroDefs = DriverArgs.getAllArgValues(options::OPT_D);
+    if (MacroDefs.empty())
+      return false;
+    std::string MacroEquals(Macro + '=');
+    return llvm::any_of(MacroDefs, [&](const std::string &M) {
+      return M == Macro || M.rfind(MacroEquals, 0) != std::string::npos;
+    });
+  };
+
+  if (getDriver().CCCIsCXX() && !findMacroDefinition("_GLIBCXX_USE_CXX11_ABI"))
+    CC1Args.push_back("-D_GLIBCXX_USE_CXX11_ABI=1");
+}
