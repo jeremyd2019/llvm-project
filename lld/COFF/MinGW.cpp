@@ -48,6 +48,8 @@ AutoExporter::AutoExporter(
       "libclang_rt.profile-arm",
       "libclang_rt.profile-i386",
       "libclang_rt.profile-x86_64",
+      "libcygwin",
+      "libmsys-2.0",
       "libc++",
       "libc++abi",
       "libFortranRuntime",
