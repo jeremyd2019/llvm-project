@@ -98,7 +98,7 @@
 // RUN: mkdir -p %t/versioned
 // RUN: touch %t/versioned/llvm-spirv-%llvm-version-major \
 // RUN:   && chmod +x %t/versioned/llvm-spirv-%llvm-version-major
-// RUN: %if !system-windows %{ env "PATH=%t/versioned" %clang -### --target=spirv64 -x cl -c %s 2>&1 \
+// RUN: %if !system-windows && !system-cygwin %{ env "PATH=%t/versioned" %clang -### --target=spirv64 -x cl -c %s 2>&1 \
 // RUN:   | FileCheck -DVERSION=%llvm-version-major --check-prefix=VERSIONED %s %}
 
 // VERSIONED: {{.*}}llvm-spirv-[[VERSION]]
